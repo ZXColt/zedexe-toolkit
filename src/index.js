@@ -58,6 +58,11 @@ app.get('/download', async (req, res) => {
 
 				const filename = files[0];
 				const filePath = path.join(downloadPath, filename);
+
+				// Set the modification and access times to the current time
+				const currentTime = new Date();
+				await fs.utimes(filePath, currentTime, currentTime);
+
 				const fileBuffer = await fs.readFile(filePath);
 				const mimeType = mime.lookup(filename);
 
@@ -65,10 +70,6 @@ app.get('/download', async (req, res) => {
 					console.error('Could not determine MIME type for file:', filename);
 					return res.status(500).send('Could not determine file type');
 				}
-
-				// Set the modification and access times to the current time
-				const currentTime = new Date();
-				await fs.utimes(filePath, currentTime, currentTime);
 
 				const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
 				const encodedFilename = encodeURIComponent(safeFilename);
