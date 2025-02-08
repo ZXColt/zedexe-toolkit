@@ -4,7 +4,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const mime = require('mime-types');
-const touch = require('touch');
+const ipGeolocate = require('dus-ip-geolocation-node-client');
 
 const app = express();
 const downloadsDir = path.join(__dirname, 'downloads');
@@ -119,10 +119,19 @@ app.get('/download', async (req, res) => {
 					if (!downloadData[ip]) {
 						downloadData[ip] = { downloads: 0, totalDataMB: 0 };
 					}
+					if (!downloadData[ip].location) {
+						try {
+							const location = await ipGeolocate(ip);
+							downloadData[ip].location = location
+						} catch (locationError) {
+							console.error('Error getting location:', locationError);
+						}
+					}
 					downloadData[ip].downloads += 1;
 					downloadData[ip].totalDataMB += fileSize / (1024 * 1024);
 
-					const logEntry = `${new Date().toUTCString()} - IP: ${ip} - File: ${safeFilename} - Size: ${fileSize / (1024 * 1024)} mb\n`;
+					const centralTime = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' });
+					const logEntry = `${centralTime} - IP: ${ip} - File: ${safeFilename} - Size: ${fileSize / (1024 * 1024)} mb\n`;
 					console.log(logEntry);
 
 					await fs.writeFile(downloadDataFilePath, JSON.stringify(downloadData, null, 2));
