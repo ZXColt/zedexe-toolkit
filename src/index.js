@@ -61,34 +61,49 @@ app.get('/download', async (req, res) => {
 				const filePath = path.join(downloadPath, filename);
 
 				const currentTime = new Date();
-				await fs.utimes(filePath, currentTime, currentTime);
-				touch(filePath, { time: currentTime });
+				// await fs.utimes(filePath, currentTime, currentTime);
+				// touch(filePath, { time: currentTime });
 
-				const fileBuffer = await fs.readFile(filePath);
-				const mimeType = mime.lookup(filename);
+				// Update the creation date metadata using ffmpeg
+				const ffmpegCommand = `ffmpeg -i "${filePath}" -metadata creation_time="${currentTime.toISOString()}" -codec copy "${filePath}.tmp" && mv "${filePath}.tmp" "${filePath}"`;
+				const ffmpegProcess = spawn('/usr/bin/env', ['bash', '-c', ffmpegCommand]);
 
-				if (!mimeType) {
-					console.error('Could not determine MIME type for file:', filename);
-					return res.status(500).send('Could not determine file type');
-				}
+				ffmpegProcess.on('error', (error) => {
+					console.error('ffmpeg error:', error);
+					return res.status(500).send('Error updating metadata');
+				});
 
-				const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-				const encodedFilename = encodeURIComponent(safeFilename);
+				ffmpegProcess.on('exit', async (ffmpegCode) => {
+					if (ffmpegCode !== 0) {
+						return res.status(500).send(`ffmpeg exited with code ${ffmpegCode}`);
+					}
 
-				res.setHeader(
-					'Content-Disposition',
-					`attachment; filename="${encodedFilename}"`
-				);
-				res.setHeader('Content-Type', mimeType);
-				res.send(fileBuffer);
+					const fileBuffer = await fs.readFile(filePath);
+					const mimeType = mime.lookup(filename);
 
-				// Log the download details
-				const fileSize = fileBuffer.length;
-				const logEntry = `${new Date().toISOString()} - IP: ${req.ip} - File: ${safeFilename} - Size: ${fileSize} bytes\n`;
-				console.log(logEntry);
-				await fs.appendFile(logFilePath, logEntry);
+					if (!mimeType) {
+						console.error('Could not determine MIME type for file:', filename);
+						return res.status(500).send('Could not determine file type');
+					}
 
-				await fs.rm(downloadPath, { recursive: true, force: true });
+					const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+					const encodedFilename = encodeURIComponent(safeFilename);
+
+					res.setHeader(
+						'Content-Disposition',
+						`attachment; filename="${encodedFilename}"`
+					);
+					res.setHeader('Content-Type', mimeType);
+					res.send(fileBuffer);
+
+					// Log the download details
+					const fileSize = fileBuffer.length;
+					const logEntry = `${new Date().toISOString()} - IP: ${req.ip} - File: ${safeFilename} - Size: ${fileSize} bytes\n`;
+					console.log(logEntry);
+					await fs.appendFile(logFilePath, logEntry);
+
+					await fs.rm(downloadPath, { recursive: true, force: true });
+				});
 			} catch (fileError) {
 				console.error('Error processing downloaded file:', fileError);
 				res.status(500).send('Error processing downloaded file');
