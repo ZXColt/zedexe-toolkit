@@ -116,8 +116,6 @@ app.get('/download', async (req, res) => {
 					}
 
 					const ip = req.ip.startsWith('::ffff:') ? req.ip.substring(7) : req.ip;
-					console.log("key", process.env.GEOIP_API_KEY);
-
 					if (!downloadData[ip]) {
 						downloadData[ip] = { downloads: 0, totalDataMB: 0 };
 					}
