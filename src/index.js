@@ -121,7 +121,7 @@ app.get('/download', async (req, res) => {
 					}
 					if (!downloadData[ip].location) {
 						try {
-							const location = await ipGeolocate(ip);
+							const location = await ipGeolocate.getGeolocationByIp(ip);
 							downloadData[ip].location = location
 						} catch (locationError) {
 							console.error('Error getting location:', locationError);
