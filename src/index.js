@@ -66,7 +66,7 @@ app.get('/download', async (req, res) => {
 					return res.status(500).send('Could not determine file type');
 				}
 
-				// Set the modification time to the current time
+				// Set the modification and access times to the current time
 				const currentTime = new Date();
 				await fs.utimes(filePath, currentTime, currentTime);
 
@@ -83,6 +83,7 @@ app.get('/download', async (req, res) => {
 				// Log the download details
 				const fileSize = fileBuffer.length;
 				const logEntry = `${new Date().toISOString()} - IP: ${req.ip} - File: ${safeFilename} - Size: ${fileSize} bytes\n`;
+				console.log(logEntry);
 				await fs.appendFile(logFilePath, logEntry);
 
 				await fs.rm(downloadPath, { recursive: true, force: true });
