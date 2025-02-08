@@ -1,10 +1,10 @@
+require('dotenv').config();
 const express = require('express');
 const { spawn } = require('child_process');
 const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const mime = require('mime-types');
-const ipGeolocate = require('dus-ip-geolocation-node-client');
 
 const app = express();
 const downloadsDir = path.join(__dirname, 'downloads');
@@ -116,12 +116,15 @@ app.get('/download', async (req, res) => {
 					}
 
 					const ip = req.ip.startsWith('::ffff:') ? req.ip.substring(7) : req.ip;
+
 					if (!downloadData[ip]) {
 						downloadData[ip] = { downloads: 0, totalDataMB: 0 };
 					}
 					if (!downloadData[ip].location) {
 						try {
-							const location = await ipGeolocate.getGeolocationByIp(ip);
+							const locationResponse = await fetch(`https://api.ipgeolocation.io/ipgeo?apiKey=${process.env.GEOIP_API_KEY}&ip=${ip}`);
+							const locationData = await locationResponse.json();
+							const location = `${locationData.city}, ${locationData.state_prov}, ${locationData.country_name}`;
 							downloadData[ip].location = location
 						} catch (locationError) {
 							console.error('Error getting location:', locationError);
@@ -131,7 +134,7 @@ app.get('/download', async (req, res) => {
 					downloadData[ip].totalDataMB += fileSize / (1024 * 1024);
 
 					const centralTime = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' });
-					const logEntry = `${centralTime} - IP: ${ip} - File: ${safeFilename} - Size: ${fileSize / (1024 * 1024)} mb\n`;
+					const logEntry = `${centralTime} -- IP:${ip} -- Size:${fileSize / (1024 * 1024)}MB -- Location: ${downloadData.location}\n`;
 					console.log(logEntry);
 
 					await fs.writeFile(downloadDataFilePath, JSON.stringify(downloadData, null, 2));
