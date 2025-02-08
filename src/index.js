@@ -99,12 +99,9 @@ app.get('/download', async (req, res) => {
 					res.setHeader('Content-Type', mimeType);
 					res.send(fileBuffer);
 
-					// Log the download details
-					const fileSize = fileBuffer.length;
-					const logEntry = `${new Date().toISOString()} - IP: ${req.ip} - File: ${safeFilename} - Size: ${fileSize} bytes\n`;
-					console.log(logEntry);
 
-					// Update download data JSON
+					// Update download data JSON and log the download
+					const fileSize = fileBuffer.length;
 					let downloadData = {};
 					try {
 						const data = await fs.readFile(downloadDataFilePath, 'utf8');
@@ -124,6 +121,9 @@ app.get('/download', async (req, res) => {
 					}
 					downloadData[ip].downloads += 1;
 					downloadData[ip].totalDataMB += fileSize / (1024 * 1024);
+
+					const logEntry = `${new Date().toUTCString()} - IP: ${ip} - File: ${safeFilename} - Size: ${fileSize / (1024 * 1024)} mb\n`;
+					console.log(logEntry);
 
 					await fs.writeFile(downloadDataFilePath, JSON.stringify(downloadData, null, 2));
 
