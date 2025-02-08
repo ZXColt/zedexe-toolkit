@@ -118,7 +118,7 @@ app.get('/download', async (req, res) => {
 						}
 					}
 
-					const ip = req.ip;
+					const ip = req.ip.startsWith('::ffff:') ? req.ip.substring(7) : req.ip;
 					if (!downloadData[ip]) {
 						downloadData[ip] = { downloads: 0, totalDataMB: 0 };
 					}
