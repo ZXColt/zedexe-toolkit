@@ -1,14 +1,13 @@
 const express = require('express');
 const { spawn } = require('child_process');
 const fs = require('fs/promises');
-const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const mime = require('mime-types'); // Install mime-types: npm install mime-types
+const mime = require('mime-types');
 
 const app = express();
-
 const downloadsDir = path.join(__dirname, 'downloads');
+const logFilePath = path.join(__dirname, 'download.log');
 
 app.get('/download', async (req, res) => {
 	const url = req.query.url;
@@ -18,19 +17,17 @@ app.get('/download', async (req, res) => {
 	}
 
 	try {
-		const randomDirName = crypto.randomUUID(); // Use UUIDs for directory names
+		const randomDirName = crypto.randomUUID();
 		const downloadPath = path.join(downloadsDir, randomDirName);
 		await fs.mkdir(downloadPath, { recursive: true });
 
-		// Use yt-dlp directly (no PowerShell needed on Ubuntu)
-		const randomFileName = crypto.randomUUID(); // Generate a random filename
+		const randomFileName = crypto.randomUUID();
 		const ytDlpCommand = `yt-dlp -f 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best' -o '${path.join(
 			downloadPath,
 			`${randomFileName}.mp4`
 		)}' --no-mtime "${url}"`;
 
 		const ytDlpProcess = spawn('/usr/bin/env', ['bash', '-c', ytDlpCommand], {
-			// Execute with bash
 			stdout: 'pipe',
 			stderr: 'pipe',
 		});
@@ -61,14 +58,17 @@ app.get('/download', async (req, res) => {
 
 				const filename = files[0];
 				const filePath = path.join(downloadPath, filename);
-
 				const fileBuffer = await fs.readFile(filePath);
-
 				const mimeType = mime.lookup(filename);
+
 				if (!mimeType) {
 					console.error('Could not determine MIME type for file:', filename);
 					return res.status(500).send('Could not determine file type');
 				}
+
+				// Set the modification time to the current time
+				const currentTime = new Date();
+				await fs.utimes(filePath, currentTime, currentTime);
 
 				const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
 				const encodedFilename = encodeURIComponent(safeFilename);
@@ -78,10 +78,14 @@ app.get('/download', async (req, res) => {
 					`attachment; filename="${encodedFilename}"`
 				);
 				res.setHeader('Content-Type', mimeType);
-
 				res.send(fileBuffer);
 
-				await fs.rm(downloadPath, { recursive: true, force: true }); // Clean up
+				// Log the download details
+				const fileSize = fileBuffer.length;
+				const logEntry = `${new Date().toISOString()} - IP: ${req.ip} - File: ${safeFilename} - Size: ${fileSize} bytes\n`;
+				await fs.appendFile(logFilePath, logEntry);
+
+				await fs.rm(downloadPath, { recursive: true, force: true });
 			} catch (fileError) {
 				console.error('Error processing downloaded file:', fileError);
 				res.status(500).send('Error processing downloaded file');
