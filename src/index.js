@@ -124,6 +124,7 @@ app.get('/download', async (req, res) => {
 					if (!downloadData[ip].location) {
 						try {
 							const locationResponse = await fetch(`https://api.ipgeolocation.io/ipgeo?apiKey=${process.env.GEOIP_API_KEY}&ip=${ip}`);
+							console.log("locationResponse", locationResponse);
 							const locationData = await locationResponse.json();
 							const location = `${locationData.city}, ${locationData.state_prov}, ${locationData.country_name}`;
 							downloadData[ip].location = location
