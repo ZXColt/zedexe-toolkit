@@ -8,7 +8,7 @@ const touch = require('touch');
 
 const app = express();
 const downloadsDir = path.join(__dirname, 'downloads');
-const logFilePath = path.join(__dirname, 'download.log');
+const downloadDataFilePath = path.join(__dirname, 'download_data.json');
 
 app.get('/download', async (req, res) => {
 	const url = req.query.url;
@@ -60,11 +60,15 @@ app.get('/download', async (req, res) => {
 				const filename = files[0];
 				const filePath = path.join(downloadPath, filename);
 
-				// Update the creation date metadata using ffmpeg
 				const currentTime = new Date();
 				const tempFilePath = `${filePath}.temp.mp4`;
 				const ffmpegCommand = `ffmpeg -i "${filePath}" -metadata creation_time="${currentTime.toISOString()}" -codec copy "${tempFilePath}" && mv "${tempFilePath}" "${filePath}"`;
 				const ffmpegProcess = spawn('/usr/bin/env', ['bash', '-c', ffmpegCommand]);
+
+				let ffmpegStderrOutput = '';
+				ffmpegProcess.stderr.on('data', (data) => {
+					ffmpegStderrOutput += data.toString();
+				});
 
 				ffmpegProcess.on('error', (error) => {
 					console.error('ffmpeg error:', error);
@@ -99,7 +103,29 @@ app.get('/download', async (req, res) => {
 					const fileSize = fileBuffer.length;
 					const logEntry = `${new Date().toISOString()} - IP: ${req.ip} - File: ${safeFilename} - Size: ${fileSize} bytes\n`;
 					console.log(logEntry);
-					//await fs.appendFile(logFilePath, logEntry);
+
+					// Update download data JSON
+					let downloadData = {};
+					try {
+						const data = await fs.readFile(downloadDataFilePath, 'utf8');
+						downloadData = JSON.parse(data);
+					} catch (err) {
+						if (err.code === 'ENOENT') {
+							// File does not exist, create it
+							await fs.writeFile(downloadDataFilePath, JSON.stringify({}, null, 2));
+						} else {
+							console.error('Error reading download data file:', err);
+						}
+					}
+
+					const ip = req.ip;
+					if (!downloadData[ip]) {
+						downloadData[ip] = { downloads: 0, totalDataMB: 0 };
+					}
+					downloadData[ip].downloads += 1;
+					downloadData[ip].totalDataMB += fileSize / (1024 * 1024);
+
+					await fs.writeFile(downloadDataFilePath, JSON.stringify(downloadData, null, 2));
 
 					await fs.rm(downloadPath, { recursive: true, force: true });
 				});
