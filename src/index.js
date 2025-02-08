@@ -61,21 +61,29 @@ app.get('/download', async (req, res) => {
 				const filePath = path.join(downloadPath, filename);
 
 				const currentTime = new Date();
-				// await fs.utimes(filePath, currentTime, currentTime);
-				// touch(filePath, { time: currentTime });
+				await fs.utimes(filePath, currentTime, currentTime);
+				touch(filePath, { time: currentTime });
 
-				// Update the creation date metadata using ffmpeg
-				const ffmpegCommand = `ffmpeg -i "${filePath}" -metadata creation_time="${currentTime.toISOString()}" -codec copy "${filePath}.tmp" && mv "${filePath}.tmp" "${filePath}"`;
-				const ffmpegProcess = spawn('/usr/bin/env', ['bash', '-c', ffmpegCommand]);
+				// Update the creation date metadata using exiftool
+				const exiftoolCommand = `exiftool -CreateDate="${currentTime.toISOString()}" -overwrite_original "${filePath}"`;
+				console.log(`Executing exiftool command: ${exiftoolCommand}`);
+				const exiftoolProcess = spawn('/usr/bin/env', ['bash', '-c', exiftoolCommand]);
 
-				ffmpegProcess.on('error', (error) => {
-					console.error('ffmpeg error:', error);
+				let exiftoolStderrOutput = '';
+				exiftoolProcess.stderr.on('data', (data) => {
+					exiftoolStderrOutput += data.toString();
+					console.error(`exiftool stderr: ${data.toString()}`);
+				});
+
+				exiftoolProcess.on('error', (error) => {
+					console.error('exiftool error:', error);
 					return res.status(500).send('Error updating metadata');
 				});
 
-				ffmpegProcess.on('exit', async (ffmpegCode) => {
-					if (ffmpegCode !== 0) {
-						return res.status(500).send(`ffmpeg exited with code ${ffmpegCode}`);
+				exiftoolProcess.on('exit', async (exiftoolCode) => {
+					if (exiftoolCode !== 0) {
+						console.error(`exiftool exited with code ${exiftoolCode}.\nStderr:\n${exiftoolStderrOutput}`);
+						return res.status(500).send(`exiftool exited with code ${exiftoolCode}.\nStderr:\n${exiftoolStderrOutput}`);
 					}
 
 					const fileBuffer = await fs.readFile(filePath);
