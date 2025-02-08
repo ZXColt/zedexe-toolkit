@@ -59,9 +59,9 @@ app.get('/download', async (req, res) => {
 				const filename = files[0];
 				const filePath = path.join(downloadPath, filename);
 
-				// Set the modification and access times to the current time
 				const currentTime = new Date();
 				await fs.utimes(filePath, currentTime, currentTime);
+				touch(filePath, { time: currentTime });
 
 				const fileBuffer = await fs.readFile(filePath);
 				const mimeType = mime.lookup(filename);
