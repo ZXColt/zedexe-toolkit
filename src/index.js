@@ -60,30 +60,21 @@ app.get('/download', async (req, res) => {
 				const filename = files[0];
 				const filePath = path.join(downloadPath, filename);
 
+				// Update the creation date metadata using ffmpeg
 				const currentTime = new Date();
-				await fs.utimes(filePath, currentTime, currentTime);
-				touch(filePath, { time: currentTime });
+				const tempFilePath = `${filePath}.temp.mp4`;
+				const ffmpegCommand = `ffmpeg -i "${filePath}" -metadata creation_time="${currentTime.toISOString()}" -codec copy "${tempFilePath}" && mv "${tempFilePath}" "${filePath}"`;
+				const ffmpegProcess = spawn('/usr/bin/env', ['bash', '-c', ffmpegCommand]);
 
-				// Update the creation date metadata using exiftool
-				const exiftoolCommand = `exiftool -CreateDate="${currentTime.toISOString()}" -overwrite_original "${filePath}"`;
-				console.log(`Executing exiftool command: ${exiftoolCommand}`);
-				const exiftoolProcess = spawn('/usr/bin/env', ['bash', '-c', exiftoolCommand]);
-
-				let exiftoolStderrOutput = '';
-				exiftoolProcess.stderr.on('data', (data) => {
-					exiftoolStderrOutput += data.toString();
-					console.error(`exiftool stderr: ${data.toString()}`);
-				});
-
-				exiftoolProcess.on('error', (error) => {
-					console.error('exiftool error:', error);
+				ffmpegProcess.on('error', (error) => {
+					console.error('ffmpeg error:', error);
 					return res.status(500).send('Error updating metadata');
 				});
 
-				exiftoolProcess.on('exit', async (exiftoolCode) => {
-					if (exiftoolCode !== 0) {
-						console.error(`exiftool exited with code ${exiftoolCode}.\nStderr:\n${exiftoolStderrOutput}`);
-						return res.status(500).send(`exiftool exited with code ${exiftoolCode}.\nStderr:\n${exiftoolStderrOutput}`);
+				ffmpegProcess.on('exit', async (ffmpegCode) => {
+					if (ffmpegCode !== 0) {
+						console.error(`ffmpeg exited with code ${ffmpegCode}.\nStderr:\n${ffmpegStderrOutput}`);
+						return res.status(500).send(`ffmpeg exited with code ${ffmpegCode}.\nStderr:\n${ffmpegStderrOutput}`);
 					}
 
 					const fileBuffer = await fs.readFile(filePath);
@@ -108,7 +99,7 @@ app.get('/download', async (req, res) => {
 					const fileSize = fileBuffer.length;
 					const logEntry = `${new Date().toISOString()} - IP: ${req.ip} - File: ${safeFilename} - Size: ${fileSize} bytes\n`;
 					console.log(logEntry);
-					await fs.appendFile(logFilePath, logEntry);
+					//await fs.appendFile(logFilePath, logEntry);
 
 					await fs.rm(downloadPath, { recursive: true, force: true });
 				});
