@@ -124,7 +124,6 @@ app.get('/download', async (req, res) => {
 					if (!downloadData[ip].location) {
 						try {
 							const locationResponse = await fetch(`https://api.ipgeolocation.io/ipgeo?apiKey=${process.env.GEOIP_API_KEY}&ip=${ip}`);
-							console.log("locationResponse", locationResponse);
 							const locationData = await locationResponse.json();
 							const location = `${locationData.city}, ${locationData.state_prov}, ${locationData.country_name}`;
 							downloadData[ip].location = location
@@ -136,7 +135,7 @@ app.get('/download', async (req, res) => {
 					downloadData[ip].totalDataMB += fileSize / (1024 * 1024);
 
 					const centralTime = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' });
-					const logEntry = `${centralTime} -- IP:${ip} -- Size:${fileSize / (1024 * 1024)}MB -- Location: ${downloadData.location}\n`;
+					const logEntry = `${centralTime} -- IP:${ip} -- Size:${fileSize / (1024 * 1024)}MB -- Location: ${downloadData[ip].location}\n`;
 					console.log(logEntry);
 
 					await fs.writeFile(downloadDataFilePath, JSON.stringify(downloadData, null, 2));
