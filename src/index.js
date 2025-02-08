@@ -1,8 +1,8 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const { spawn } = require('child_process');
 const fs = require('fs/promises');
-const path = require('path');
 const crypto = require('crypto');
 const mime = require('mime-types');
 
