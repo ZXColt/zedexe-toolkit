@@ -5,7 +5,7 @@ module.exports = {
             script: 'src/index.js', // Replace with the entry point of your application
             instances: 1, // Run a single instance
             exec_mode: 'fork', // Use 'fork' for single instance
-            watch: true, // Watch for file changes and restart
+            watch: false, // Watch for file changes and restart
             env: {
                 NODE_ENV: 'development',
             },
