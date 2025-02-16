@@ -1,5 +1,4 @@
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const { spawn } = require('child_process');
 const fs = require('fs/promises');
@@ -18,138 +17,145 @@ app.get('/download', async (req, res) => {
 	}
 
 	try {
-		const randomDirName = crypto.randomUUID();
-		const downloadPath = path.join(downloadsDir, randomDirName);
-		await fs.mkdir(downloadPath, { recursive: true });
+		const downloadPath = await createDownloadDirectory();
+		const filename = await downloadVideo(url, downloadPath);
+		const filePath = path.join(downloadPath, filename);
 
-		const randomFileName = crypto.randomUUID();
-		const ytDlpCommand = `yt-dlp -f 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best' -o '${path.join(
-			downloadPath,
-			`${randomFileName}.mp4`
-		)}' --no-mtime "${url}"`;
+		await updateMetadata(filePath);
 
-		const ytDlpProcess = spawn('/usr/bin/env', ['bash', '-c', ytDlpCommand], {
-			stdout: 'pipe',
-			stderr: 'pipe',
-		});
+		const fileBuffer = await fs.readFile(filePath);
+		const mimeType = mime.lookup(filename);
 
-		ytDlpProcess.on('error', (error) => {
-			console.error('yt-dlp error:', error);
-			return res.status(500).send('Error executing yt-dlp');
-		});
+		if (!mimeType) {
+			console.error('Could not determine MIME type for file:', filename);
+			return res.status(500).send('Could not determine file type');
+		}
 
-		let stderrOutput = '';
-		ytDlpProcess.stderr.on('data', (data) => {
-			stderrOutput += data.toString();
-			console.error(`yt-dlp stderr: ${data.toString()}`);
-		});
+		//const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+		const encodedFilename = encodeURIComponent(filename);
 
-		ytDlpProcess.on('exit', async (code) => {
-			if (code !== 0) {
-				return res
-					.status(500)
-					.send(`yt-dlp exited with code ${code}.\nStderr:\n${stderrOutput}`);
-			}
+		res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`);
+		res.setHeader('Content-Type', mimeType);
+		res.send(fileBuffer);
 
-			try {
-				const files = await fs.readdir(downloadPath);
-				if (!files || files.length === 0) {
-					return res.status(500).send('No files downloaded');
-				}
-
-				const filename = files[0];
-				const filePath = path.join(downloadPath, filename);
-
-				const currentTime = new Date();
-				const tempFilePath = `${filePath}.temp.mp4`;
-				const ffmpegCommand = `ffmpeg -i "${filePath}" -metadata creation_time="${currentTime.toISOString()}" -codec copy "${tempFilePath}" && mv "${tempFilePath}" "${filePath}"`;
-				const ffmpegProcess = spawn('/usr/bin/env', ['bash', '-c', ffmpegCommand]);
-
-				let ffmpegStderrOutput = '';
-				ffmpegProcess.stderr.on('data', (data) => {
-					ffmpegStderrOutput += data.toString();
-				});
-
-				ffmpegProcess.on('error', (error) => {
-					console.error('ffmpeg error:', error);
-					return res.status(500).send('Error updating metadata');
-				});
-
-				ffmpegProcess.on('exit', async (ffmpegCode) => {
-					if (ffmpegCode !== 0) {
-						console.error(`ffmpeg exited with code ${ffmpegCode}.\nStderr:\n${ffmpegStderrOutput}`);
-						return res.status(500).send(`ffmpeg exited with code ${ffmpegCode}.\nStderr:\n${ffmpegStderrOutput}`);
-					}
-
-					const fileBuffer = await fs.readFile(filePath);
-					const mimeType = mime.lookup(filename);
-
-					if (!mimeType) {
-						console.error('Could not determine MIME type for file:', filename);
-						return res.status(500).send('Could not determine file type');
-					}
-
-					const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-					const encodedFilename = encodeURIComponent(safeFilename);
-
-					res.setHeader(
-						'Content-Disposition',
-						`attachment; filename="${encodedFilename}"`
-					);
-					res.setHeader('Content-Type', mimeType);
-					res.send(fileBuffer);
-
-
-					// Update download data JSON and log the download
-					const fileSize = fileBuffer.length;
-					let downloadData = {};
-					try {
-						const data = await fs.readFile(downloadDataFilePath, 'utf8');
-						downloadData = JSON.parse(data);
-					} catch (err) {
-						if (err.code === 'ENOENT') {
-							// File does not exist, create it
-							await fs.writeFile(downloadDataFilePath, JSON.stringify({}, null, 2));
-						} else {
-							console.error('Error reading download data file:', err);
-						}
-					}
-
-					const ip = req.ip.startsWith('::ffff:') ? req.ip.substring(7) : req.ip;
-					if (!downloadData[ip]) {
-						downloadData[ip] = { downloads: 0, totalDataMB: 0 };
-					}
-					if (!downloadData[ip].location) {
-						try {
-							const locationResponse = await fetch(`https://api.ipgeolocation.io/ipgeo?apiKey=${process.env.GEOIP_API_KEY}&ip=${ip}`);
-							const locationData = await locationResponse.json();
-							const location = `${locationData.city}, ${locationData.state_prov}, ${locationData.country_name}`;
-							downloadData[ip].location = location
-						} catch (locationError) {
-							console.error('Error getting location:', locationError);
-						}
-					}
-					downloadData[ip].downloads += 1;
-					downloadData[ip].totalDataMB += fileSize / (1024 * 1024);
-
-					const centralTime = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' });
-					const logEntry = `${centralTime} -- IP:${ip} -- Size:${fileSize / (1024 * 1024)}MB -- Location: ${downloadData[ip].location}\n`;
-					console.log(logEntry);
-
-					await fs.writeFile(downloadDataFilePath, JSON.stringify(downloadData, null, 2));
-
-					await fs.rm(downloadPath, { recursive: true, force: true });
-				});
-			} catch (fileError) {
-				console.error('Error processing downloaded file:', fileError);
-				res.status(500).send('Error processing downloaded file');
-			}
-		});
+		await updateDownloadData(req, fileBuffer.length);
+		await fs.rm(downloadPath, { recursive: true, force: true });
 	} catch (error) {
 		console.error('General error:', error);
 		res.status(500).send('An error occurred');
 	}
 });
+
+const createDownloadDirectory = async () => {
+	const randomDirName = crypto.randomUUID();
+	const downloadPath = path.join(downloadsDir, randomDirName);
+	await fs.mkdir(downloadPath, { recursive: true });
+	return downloadPath;
+};
+
+const downloadVideo = async (url, downloadPath) => {
+	const randomFileName = crypto.randomUUID();
+	const ytDlpCommand = `yt-dlp -f 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best' -o '${path.join(
+		downloadPath,
+		`${randomFileName}.mp4`
+	)}' --no-mtime "${url}"`;
+
+	const ytDlpProcess = spawn('/usr/bin/env', ['bash', '-c', ytDlpCommand], {
+		stdout: 'pipe',
+		stderr: 'pipe',
+	});
+
+	let stderrOutput = '';
+	ytDlpProcess.stderr.on('data', (data) => {
+		stderrOutput += data.toString();
+		console.error(`yt-dlp stderr: ${data.toString()}`);
+	});
+
+	return new Promise((resolve, reject) => {
+		ytDlpProcess.on('exit', async (code) => {
+			if (code !== 0) {
+				return reject(new Error(`yt-dlp exited with code ${code}.\nStderr:\n${stderrOutput}`));
+			}
+
+			try {
+				const files = await fs.readdir(downloadPath);
+				if (!files || files.length === 0) {
+					return reject(new Error('No files downloaded'));
+				}
+				resolve(files[0]);
+			} catch (err) {
+				reject(err);
+			}
+		});
+	});
+};
+
+const updateMetadata = async (filePath) => {
+	const currentTime = new Date();
+	const tempFilePath = `${filePath}.temp.mp4`;
+	const ffmpegCommand = `ffmpeg -i "${filePath}" -metadata creation_time="${currentTime.toISOString()}" -codec copy "${tempFilePath}" && mv "${tempFilePath}" "${filePath}"`;
+	const ffmpegProcess = spawn('/usr/bin/env', ['bash', '-c', ffmpegCommand]);
+
+	let ffmpegStderrOutput = '';
+	ffmpegProcess.stderr.on('data', (data) => {
+		ffmpegStderrOutput += data.toString();
+	});
+
+	return new Promise((resolve, reject) => {
+		ffmpegProcess.on('error', (error) => {
+			console.error('ffmpeg error:', error);
+			reject(new Error('Error updating metadata'));
+		});
+
+		ffmpegProcess.on('exit', (ffmpegCode) => {
+			if (ffmpegCode !== 0) {
+				console.error(`ffmpeg exited with code ${ffmpegCode}.\nStderr:\n${ffmpegStderrOutput}`);
+				reject(new Error(`ffmpeg exited with code ${ffmpegCode}.\nStderr:\n${ffmpegStderrOutput}`));
+			} else {
+				resolve();
+			}
+		});
+	});
+};
+
+const updateDownloadData = async (req, fileSize) => {
+	let downloadData = {};
+	try {
+		const data = await fs.readFile(downloadDataFilePath, 'utf8');
+		downloadData = JSON.parse(data);
+	} catch (err) {
+		if (err.code === 'ENOENT') {
+			// File does not exist, create it
+			await fs.writeFile(downloadDataFilePath, JSON.stringify({}, null, 2));
+		} else {
+			console.error('Error reading download data file:', err);
+		}
+	}
+
+	const ip = req.ip.startsWith('::ffff:') ? req.ip.substring(7) : req.ip;
+	if (!downloadData[ip]) {
+		downloadData[ip] = { downloads: 0, totalDataMB: 0 };
+	}
+	if (!downloadData[ip].location) {
+		try {
+			const response = await fetch(`https://ipwhois.app/json/8.8.8.8`);
+			const locationData = await response.json();
+			console.log('Location response:', locationData);
+			const location = `${locationData.city}, ${locationData.region}, ${locationData.country}`;
+			downloadData[ip].location = location;
+		} catch (locationError) {
+			console.error('Error getting location:', locationError);
+		}
+	}
+	downloadData[ip].downloads += 1;
+	downloadData[ip].totalDataMB += fileSize / (1024 * 1024);
+
+	const centralTime = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' });
+	const logEntry = `${centralTime} -- IP:${ip} -- Size:${fileSize / (1024 * 1024)}MB -- Location: ${downloadData[ip].location}\n`;
+	console.log(logEntry);
+
+	await fs.writeFile(downloadDataFilePath, JSON.stringify(downloadData, null, 2));
+};
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {

@@ -3,9 +3,8 @@
 	"version": "1.0.0",
 	"main": "index.js",
 	"scripts": {
-		"start-bun": "bun run index.js",
 		"start": "node src/index.js",
-		"dev": "nodemon server.js"
+		"dev": "node --watch index.js"
 	},
 	"author": "",
 	"license": "ISC",
@@ -13,14 +12,10 @@
 	"dependencies": {
 		"child_process": "^1.0.2",
 		"crypto": "^1.0.1",
-		"dotenv": "^16.4.7",
 		"express": "^4.21.2",
 		"fs.promises": "^0.1.2",
 		"mime-types": "^2.1.35",
 		"path": "^0.12.7",
 		"touch": "^3.1.1"
-	},
-	"devDependencies": {
-		"nodemon": "^3.1.9"
 	}
 }
