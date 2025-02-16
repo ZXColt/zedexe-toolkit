@@ -34,10 +34,12 @@ app.get('/download', async (req, res) => {
 		//const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
 		const encodedFilename = encodeURIComponent(filename);
 
+		console.log('Sending file:', encodedFilename);
 		res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`);
 		res.setHeader('Content-Type', mimeType);
 		res.send(fileBuffer);
 
+		console.log('Cleaning up download:', downloadPath);
 		await updateDownloadData(req, fileBuffer.length);
 		await fs.rm(downloadPath, { recursive: true, force: true });
 	} catch (error) {
@@ -54,7 +56,8 @@ const createDownloadDirectory = async () => {
 };
 
 const downloadVideo = async (url, downloadPath) => {
-	const randomFileName = crypto.randomUUID();
+	console.log('Downloading video:', url);
+	const randomFileName = 'zedex-rip';
 	const ytDlpCommand = `yt-dlp -f 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best' -o '${path.join(
 		downloadPath,
 		`${randomFileName}.mp4`
