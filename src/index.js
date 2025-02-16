@@ -39,9 +39,9 @@ app.get('/download', async (req, res) => {
 		res.setHeader('Content-Type', mimeType);
 		res.send(fileBuffer);
 
-		console.log('Cleaning up download:', downloadPath);
 		await updateDownloadData(req, fileBuffer.length);
-		await fs.rm(downloadPath, { recursive: true, force: true });
+		console.log('Cleaning up download:', downloadPath);
+		//await fs.rm(downloadPath, { recursive: true, force: true });
 	} catch (error) {
 		console.error('General error:', error);
 		res.status(500).send('An error occurred');
@@ -143,7 +143,6 @@ const updateDownloadData = async (req, fileSize) => {
 		try {
 			const response = await fetch(`https://ipwhois.app/json/8.8.8.8`);
 			const locationData = await response.json();
-			console.log('Location response:', locationData);
 			const location = `${locationData.city}, ${locationData.region}, ${locationData.country}`;
 			downloadData[ip].location = location;
 		} catch (locationError) {
