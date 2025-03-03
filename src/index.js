@@ -1,13 +1,20 @@
 const path = require('path');
 const express = require('express');
-const cors = require('cors'); // Add this line
+const cors = require('cors');
 const { spawn } = require('child_process');
 const fs = require('fs/promises');
 const crypto = require('crypto');
 const mime = require('mime-types');
 
 const app = express();
-app.use(cors()); // Add this line
+
+// Configure CORS to allow requests from any origin
+app.use(cors({
+	origin: '*', // Allow all origins
+	methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+	preflightContinue: false,
+	optionsSuccessStatus: 204
+}));
 
 const downloadsDir = path.join(__dirname, 'downloads');
 const downloadDataFilePath = path.join(__dirname, 'download_data.json');
