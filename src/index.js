@@ -159,7 +159,10 @@ const updateDownloadData = async (req, fileSize) => {
 	await fs.writeFile(downloadDataFilePath, JSON.stringify(downloadData, null, 2));
 };
 
+// Serve static files from the 'web-frontend' directory
+app.use(express.static(path.join(__dirname, 'web-frontend')));
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-	console.log(`Server listening on port ${port}`);
+	console.log(`Server running on port ${port}`);
 });
