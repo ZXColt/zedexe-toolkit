@@ -1,11 +1,14 @@
 const path = require('path');
 const express = require('express');
+const cors = require('cors'); // Add this line
 const { spawn } = require('child_process');
 const fs = require('fs/promises');
 const crypto = require('crypto');
 const mime = require('mime-types');
 
 const app = express();
+app.use(cors()); // Add this line
+
 const downloadsDir = path.join(__dirname, 'downloads');
 const downloadDataFilePath = path.join(__dirname, 'download_data.json');
 

@@ -11,6 +11,7 @@
 	"description": "",
 	"dependencies": {
 		"child_process": "^1.0.2",
+		"cors": "^2.8.5",
 		"crypto": "^1.0.1",
 		"express": "^4.21.2",
 		"fs.promises": "^0.1.2",
