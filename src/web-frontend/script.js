@@ -1,7 +1,7 @@
 console.log('Script loaded');
 
 const isLocalhost = window.location.hostname === 'localhost';
-const baseURL = isLocalhost ? 'http://localhost:3000' : 'http://your-server-ip:3000';
+const baseURL = isLocalhost ? 'http://localhost:3000' : 'http://157.230.237.8:3000';
 
 function submitLink() {
     const linkInput = document.getElementById('videoLink').value;
