@@ -10,22 +10,6 @@ const app = express();
 
 app.use(cors());
 
-// Configure CORS to allow requests from any origin
-// app.use(cors({
-// 	origin: '*', // Allow all origins
-// 	methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-// 	preflightContinue: false,
-// 	optionsSuccessStatus: 204
-// }));
-
-// app.use(function (req, res, next) {
-// 	res.setHeader('Access-Control-Allow-Origin', '*');
-// 	res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-// 	res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-// 	res.setHeader('Access-Control-Allow-Credentials', true);
-// 	next();
-// });
-
 const downloadsDir = path.join(__dirname, 'downloads');
 const downloadDataFilePath = path.join(__dirname, 'download_data.json');
 
