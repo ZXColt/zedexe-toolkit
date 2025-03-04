@@ -3,11 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const { spawn } = require('child_process');
 const fs = require('fs/promises');
-const crypto = require('crypto');
 const mime = require('mime-types');
 
 const app = express();
-
 app.use(cors());
 
 const downloadsDir = path.join(__dirname, 'downloads');
@@ -22,10 +20,12 @@ app.get('/download', async (req, res) => {
 
 	try {
 		const downloadPath = await createDownloadDirectory();
+		//const cleanedUrl = await cleanUrl(url);
 		const filename = await downloadVideo(url, downloadPath);
 		const filePath = path.join(downloadPath, filename);
 
 		await updateMetadata(filePath);
+		//await addWatermark(filePath);
 
 		const fileBuffer = await fs.readFile(filePath);
 		const mimeType = mime.lookup(filename);
@@ -35,7 +35,6 @@ app.get('/download', async (req, res) => {
 			return res.status(500).send('Could not determine file type');
 		}
 
-		//const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
 		const encodedFilename = encodeURIComponent(filename);
 
 		console.log('Sending file:', encodedFilename);
@@ -45,7 +44,7 @@ app.get('/download', async (req, res) => {
 
 		await updateDownloadData(req, fileBuffer.length);
 		console.log('Cleaning up download:', downloadPath);
-		//await fs.rm(downloadPath, { recursive: true, force: true });
+		await fs.rm(downloadPath, { recursive: true, force: true });
 	} catch (error) {
 		console.error('General error:', error);
 		res.status(500).send('An error occurred');
@@ -53,7 +52,7 @@ app.get('/download', async (req, res) => {
 });
 
 const createDownloadDirectory = async () => {
-	const randomDirName = crypto.randomUUID();
+	const randomDirName = Math.random().toString(36).substring(2, 10);
 	const downloadPath = path.join(downloadsDir, randomDirName);
 	await fs.mkdir(downloadPath, { recursive: true });
 	return downloadPath;
@@ -89,6 +88,7 @@ const downloadVideo = async (url, downloadPath) => {
 				if (!files || files.length === 0) {
 					return reject(new Error('No files downloaded'));
 				}
+				console.log('Finished downloading video');
 				resolve(files[0]);
 			} catch (err) {
 				reject(err);
@@ -98,6 +98,7 @@ const downloadVideo = async (url, downloadPath) => {
 };
 
 const updateMetadata = async (filePath) => {
+	console.log('Updating metadata for video:', filePath);
 	const currentTime = new Date();
 	const tempFilePath = `${filePath}.temp.mp4`;
 	const ffmpegCommand = `ffmpeg -i "${filePath}" -metadata creation_time="${currentTime.toISOString()}" -codec copy "${tempFilePath}" && mv "${tempFilePath}" "${filePath}"`;
@@ -119,11 +120,42 @@ const updateMetadata = async (filePath) => {
 				console.error(`ffmpeg exited with code ${ffmpegCode}.\nStderr:\n${ffmpegStderrOutput}`);
 				reject(new Error(`ffmpeg exited with code ${ffmpegCode}.\nStderr:\n${ffmpegStderrOutput}`));
 			} else {
+				console.log('Finished updating metadata');
 				resolve();
 			}
 		});
 	});
 };
+
+const addWatermark = async (filePath) => {
+	console.log('Adding watermark to video:', filePath);
+	const tempFilePath = `${filePath}.temp.mp4`;
+	const watermarkPath = path.join(__dirname, 'watermark.png');
+	const ffmpegCommand = `ffmpeg -i "${filePath}" -i "${watermarkPath}" -filter_complex "[1]scale=iw/12:ih/12[wm];[0][wm]overlay=5:5" -codec:a copy "${tempFilePath}" && mv "${tempFilePath}" "${filePath}"`;
+	const ffmpegProcess = spawn('/usr/bin/env', ['bash', '-c', ffmpegCommand]);
+
+	let ffmpegStderrOutput = '';
+	ffmpegProcess.stderr.on('data', (data) => {
+		ffmpegStderrOutput += data.toString();
+	});
+
+	return new Promise((resolve, reject) => {
+		ffmpegProcess.on('error', (error) => {
+			console.error('ffmpeg error:', error);
+			reject(new Error('Error updating metadata'));
+		});
+
+		ffmpegProcess.on('exit', (ffmpegCode) => {
+			if (ffmpegCode !== 0) {
+				console.error(`ffmpeg exited with code ${ffmpegCode}.\nStderr:\n${ffmpegStderrOutput}`);
+				reject(new Error(`ffmpeg exited with code ${ffmpegCode}.\nStderr:\n${ffmpegStderrOutput}`));
+			} else {
+				console.log('Finished adding watermark');
+				resolve();
+			}
+		});
+	});
+}
 
 const updateDownloadData = async (req, fileSize) => {
 	let downloadData = {};
@@ -163,10 +195,14 @@ const updateDownloadData = async (req, fileSize) => {
 	await fs.writeFile(downloadDataFilePath, JSON.stringify(downloadData, null, 2));
 };
 
-// Serve static files from the 'web-frontend' directory
+const cleanedUrl = async (url) => {
+	//https://www.tiktok.com/@leedm9/video/7451719137040026886?is_from_webapp=1&sender_device=pc
+	return url;
+}
+
 app.use(express.static(path.join(__dirname, 'web-frontend')));
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-	console.log(`Server running on port ${port}`);
+	console.log(`Server running on http://localhost:${port}`);
 });

@@ -4,7 +4,7 @@
 	"main": "index.js",
 	"scripts": {
 		"start": "node src/index.js",
-		"dev": "node --watch index.js"
+		"dev": "node --watch src/index.js"
 	},
 	"author": "",
 	"license": "ISC",
@@ -12,11 +12,13 @@
 	"dependencies": {
 		"child_process": "^1.0.2",
 		"cors": "^2.8.5",
-		"crypto": "^1.0.1",
 		"express": "^4.21.2",
 		"fs.promises": "^0.1.2",
 		"mime-types": "^2.1.35",
 		"path": "^0.12.7",
 		"touch": "^3.1.1"
+	},
+	"devDependencies": {
+		"nodemon": "^3.1.9"
 	}
 }
