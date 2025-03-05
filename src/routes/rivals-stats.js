@@ -16,7 +16,7 @@ router.post('/getStats', async (req, res) => {
     try {
         const cluster = await Cluster.launch({
             concurrency: Cluster.CONCURRENCY_CONTEXT,
-            maxConcurrency: 2, // Adjust this based on your server's capacity
+            maxConcurrency: 1, // Adjust this based on your server's capacity
             puppeteerOptions: {
                 headless: true,
                 args: [
@@ -39,15 +39,6 @@ router.post('/getStats', async (req, res) => {
 
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
             await page.setViewport({ width: 1920, height: 1080 });
-
-            const cookies = [
-                {
-                    name: 'example_cookie',
-                    value: 'example_value',
-                    domain: 'tracker.gg',
-                },
-            ];
-            await page.setCookie(...cookies);
 
             await page.setExtraHTTPHeaders({
                 'accept-language': 'en-US,en;q=0.9',
