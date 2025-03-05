@@ -1,7 +1,7 @@
 module.exports = {
     apps: [
         {
-            name: 'dl-api',
+            name: 'zedexe-toolkit',
             script: 'src/index.js', // Replace with the entry point of your application
             instances: 1, // Run a single instance
             exec_mode: 'fork', // Use 'fork' for single instance

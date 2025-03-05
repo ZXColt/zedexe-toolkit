@@ -1,5 +1,5 @@
 {
-	"name": "dl-api",
+	"name": "zedexe-toolkit",
 	"version": "1.0.0",
 	"main": "index.js",
 	"scripts": {
@@ -10,12 +10,14 @@
 	"license": "ISC",
 	"description": "",
 	"dependencies": {
+		"axios": "^1.8.1",
 		"child_process": "^1.0.2",
 		"cors": "^2.8.5",
 		"express": "^4.21.2",
 		"fs.promises": "^0.1.2",
 		"mime-types": "^2.1.35",
 		"path": "^0.12.7",
+		"puppeteer": "^24.3.1",
 		"touch": "^3.1.1"
 	},
 	"devDependencies": {
