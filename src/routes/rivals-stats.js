@@ -11,7 +11,8 @@ router.post('/getStats', async (req, res) => {
     }
 
     const allResults = [];
-    let browser; // Declare browser outside the loop
+    let browser;
+    let page; // Declare page outside the loop
 
     try {
         browser = await puppeteer.launch({
@@ -23,36 +24,18 @@ router.post('/getStats', async (req, res) => {
                 '--disable-extensions',
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
-                '--window-size=1920,1080',
-                '--incognito',
                 '--disable-blink-features=AutomationControlled',
             ],
         });
+
+        page = await browser.newPage(); // Create page once
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+        await page.setJavaScriptEnabled(true);
 
         for (const playerName of playerNames) {
             const url = `https://api.tracker.gg/api/v2/marvel-rivals/standard/profile/ign/${playerName}/segments/career?mode=competitive&season=3`;
 
             try {
-                const page = await browser.newPage();
-
-                await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-                await page.setViewport({ width: 1920, height: 1080 });
-
-                const cookies = [
-                    {
-                        name: 'example_cookie',
-                        value: 'example_value',
-                        domain: 'tracker.gg',
-                    },
-                ];
-                await page.setCookie(...cookies);
-
-                await page.setExtraHTTPHeaders({
-                    'accept-language': 'en-US,en;q=0.9',
-                    'upgrade-insecure-requests': '1',
-                });
-
-                await page.setJavaScriptEnabled(true);
                 await page.goto(url, { waitUntil: 'networkidle2' });
 
                 const jsonData = await page.evaluate(() => {
@@ -61,14 +44,12 @@ router.post('/getStats', async (req, res) => {
                     return JSON.parse(preElement.innerText).data;
                 });
 
-                await page.close(); // Close the page, not the browser
-
                 if (jsonData) {
                     let matchesPlayed = 0;
                     const otpList = [];
 
                     const overallStats = jsonData.find(item => item.type === 'overview');
-                    const playerRank = overallStats.stats.ranked.displayValue;
+                    const playerRank = overallStats?.stats?.ranked?.displayValue || "Unranked";
 
                     const heroStats = jsonData.filter(item => item.type === 'hero');
                     const heroMap = new Map();
@@ -85,7 +66,7 @@ router.post('/getStats', async (req, res) => {
                     const sortedHeroMap = new Map([...heroMap.entries()].sort((a, b) => b[1] - a[1]));
 
                     sortedHeroMap.forEach((matches, hero) => {
-                        const roundedRate = Math.floor((matches / matchesPlayed) * 100);
+                        const roundedRate = matchesPlayed > 0 ? Math.floor((matches / matchesPlayed) * 100) : 0;
                         otpList.push({ playerName: playerName, hero, rate: roundedRate, rank: playerRank });
                     });
 
@@ -96,15 +77,14 @@ router.post('/getStats', async (req, res) => {
             }
         }
 
-        // Sort all results by rate outside the loop
         allResults.sort((a, b) => b.rate - a.rate);
         res.json(allResults);
     } catch (browserError) {
-        console.error('Error launching browser:', browserError);
-        res.status(500).send('An error occurred while fetching stats');
+        console.error('Error:', browserError);
+        res.status(500).send('An error occurred');
     } finally {
         if (browser) {
-            await browser.close(); // Close the browser after all players are processed
+            await browser.close();
         }
     }
 });
