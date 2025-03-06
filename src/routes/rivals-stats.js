@@ -1,7 +1,53 @@
 const express = require('express');
-const puppeteer = require('puppeteer');
 
 const router = express.Router();
+
+const heroes = [
+    { hero_id: 1046, name: "Adam Warlock" },
+    { hero_id: 1026, name: "Black Panther" },
+    { hero_id: 1018, name: "Doctor Strange" },
+    { hero_id: 1027, name: "Groot" },
+    { hero_id: 1024, name: "Hela" },
+    { hero_id: 1011, name: "Hulk" },
+    { hero_id: 1034, name: "Iron Man" },
+    { hero_id: 1047, name: "Jeff The Land Shark" },
+    { hero_id: 1016, name: "Loki" },
+    { hero_id: 1031, name: "Luna Snow" },
+    { hero_id: 1029, name: "Magik" },
+    { hero_id: 1037, name: "Magneto" },
+    { hero_id: 1020, name: "Mantis" },
+    { hero_id: 1045, name: "Namor" },
+    { hero_id: 1042, name: "Peni Parker" },
+    { hero_id: 1014, name: "The Punisher" },
+    { hero_id: 1023, name: "Rocket Raccoon" },
+    { hero_id: 1038, name: "Scarlet Witch" },
+    { hero_id: 1043, name: "Star Lord" },
+    { hero_id: 1015, name: "Storm" },
+    { hero_id: 1039, name: "Thor" },
+    { hero_id: 1035, name: "Venom" },
+    { hero_id: 1036, name: "Spider Man" },
+    { hero_id: 1049, name: "Wolverine" },
+    { hero_id: 1025, name: "Cloak & Dagger" },
+    { hero_id: 1052, name: "Iron Fist" },
+    { hero_id: 1021, name: "Hawkeye" },
+    { hero_id: 1030, name: "Moon Knight" },
+    { hero_id: 1048, name: "Psylocke" },
+    { hero_id: 1032, name: "Squirrel Girl" },
+    { hero_id: 1041, name: "Winter Soldier" },
+    { hero_id: 1033, name: "Black Widow" },
+    { hero_id: 1022, name: "Captain America" },
+    { hero_id: 1040, name: "Mister Fantastic" },
+    { hero_id: 1050, name: "Invisible Woman" },
+    { hero_id: 1017, name: "Human Torch" },
+    { hero_id: 1051, name: "The Thing" },
+];
+
+function getHeroNames(heroIds) {
+    return heroIds.map(id => {
+        const hero = heroes.find(h => h.hero_id === id);
+        return hero ? hero.name : `Hero ID ${id} not found`;
+    });
+}
 
 router.post('/getStats', async (req, res) => {
     const playerNames = req.body.playerNames;
@@ -11,81 +57,78 @@ router.post('/getStats', async (req, res) => {
     }
 
     const allResults = [];
-    let browser;
-    let page; // Declare page outside the loop
 
     try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--enable-javascript',
-                '--disable-extensions',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--disable-blink-features=AutomationControlled',
-            ],
-        });
-
-        page = await browser.newPage(); // Create page once
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-        await page.setJavaScriptEnabled(true);
-
         for (const playerName of playerNames) {
-            const url = `https://api.tracker.gg/api/v2/marvel-rivals/standard/profile/ign/${playerName}/segments/career?mode=competitive&season=3`;
 
-            try {
-                await page.goto(url, { waitUntil: 'networkidle2' });
+            const findPlayerUrl = 'https://rivalsmeta.com/api/find-player';
+            const findPlayerResponse = await fetch(findPlayerUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: playerName })
+            });
 
-                const jsonData = await page.evaluate(() => {
-                    const preElement = document.querySelector('pre');
-                    if (!preElement) return null;
-                    return JSON.parse(preElement.innerText).data;
-                });
+            if (!findPlayerResponse.ok) {
+                console.error(`Failed to find player ID for ${playerName}: ${findPlayerResponse.status} ${findPlayerResponse.statusText}`);
+                return res.status(findPlayerResponse.status).send(`Failed to find player ID for ${playerName}`);
+            }
 
-                if (jsonData) {
-                    let matchesPlayed = 0;
-                    const otpList = [];
+            const findPlayerData = await findPlayerResponse.json();
+            console.log('findPlayerData:', findPlayerData);
+            const playerId = findPlayerData[0].aid;
 
-                    const overallStats = jsonData.find(item => item.type === 'overview');
-                    const playerRank = overallStats?.stats?.ranked?.displayValue || "Unranked";
+            if (!playerId) {
+                console.error(`Player ID not found for ${playerName}`);
+                return res.status(404).send(`Player ID not found for ${playerName}`);
+            }
 
-                    const heroStats = jsonData.filter(item => item.type === 'hero');
-                    const heroMap = new Map();
+            const url = `https://rivalsmeta.com/api/player/${playerId}?season=3`;
 
-                    heroStats.forEach(hero => {
-                        const heroName = hero.metadata.name;
-                        const matches = hero.stats.matchesPlayed.value;
-                        if (matches) {
-                            heroMap.set(heroName, matches);
-                            matchesPlayed += matches;
-                        }
-                    });
+            const response = await fetch(url);
+            if (!response.ok) {
+                console.error(`Failed to fetch stats for ${playerId}: ${response.status} ${response.statusText}`);
+                return res.status(response.status).send(`Failed to fetch stats for ${playerId}`);
+            }
 
-                    const sortedHeroMap = new Map([...heroMap.entries()].sort((a, b) => b[1] - a[1]));
+            const data = await response.json();
 
-                    sortedHeroMap.forEach((matches, hero) => {
-                        const roundedRate = matchesPlayed > 0 ? Math.floor((matches / matchesPlayed) * 100) : 0;
-                        otpList.push({ playerName: playerName, hero, rate: roundedRate, rank: playerRank });
-                    });
+            if (data && data.heroes_ranked) {
+                const heroesRanked = data.heroes_ranked;
+                let matchesPlayed = 0;
+                const otpList = [];
 
-                    allResults.push(...otpList);
+                for (const heroId in heroesRanked) {
+                    if (heroesRanked.hasOwnProperty(heroId)) {
+                        const heroStats = heroesRanked[heroId];
+                        matchesPlayed += heroStats.matches;
+                    }
                 }
-            } catch (pageError) {
-                console.error(`Error fetching stats for ${playerName}:`, pageError);
+
+                for (const heroId in heroesRanked) {
+                    if (heroesRanked.hasOwnProperty(heroId)) {
+                        const heroStats = heroesRanked[heroId];
+                        const roundedRate = matchesPlayed > 0 ? Math.floor((heroStats.matches / matchesPlayed) * 100) : 0;
+                        const heroName = getHeroNames([parseInt(heroId)])[0]; // Get hero name
+                        otpList.push({
+                            playerName: data.player.info.name,
+                            hero: heroName, // Use hero name
+                            rate: roundedRate,
+                            rank: Math.floor(data.player.info.rank_game_1001001.rank_game.rank_score),
+                        });
+                    }
+                }
+
+                allResults.push(...otpList);
             }
         }
 
         allResults.sort((a, b) => b.rate - a.rate);
         res.json(allResults);
-    } catch (browserError) {
-        console.error('Error:', browserError);
+    } catch (error) {
+        console.error('Error:', error);
         res.status(500).send('An error occurred');
-    } finally {
-        if (browser) {
-            await browser.close();
-        }
     }
 });
 
