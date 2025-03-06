@@ -1,46 +1,8 @@
 const express = require('express');
+const axios = require('axios');
+const heroes = require('../data/heroes.json'); // Import heroes from JSON file
 
 const router = express.Router();
-
-const heroes = [
-    { hero_id: 1046, name: "Adam Warlock" },
-    { hero_id: 1026, name: "Black Panther" },
-    { hero_id: 1018, name: "Doctor Strange" },
-    { hero_id: 1027, name: "Groot" },
-    { hero_id: 1024, name: "Hela" },
-    { hero_id: 1011, name: "Hulk" },
-    { hero_id: 1034, name: "Iron Man" },
-    { hero_id: 1047, name: "Jeff The Land Shark" },
-    { hero_id: 1016, name: "Loki" },
-    { hero_id: 1031, name: "Luna Snow" },
-    { hero_id: 1029, name: "Magik" },
-    { hero_id: 1037, name: "Magneto" },
-    { hero_id: 1020, name: "Mantis" },
-    { hero_id: 1045, name: "Namor" },
-    { hero_id: 1042, name: "Peni Parker" },
-    { hero_id: 1014, name: "The Punisher" },
-    { hero_id: 1023, name: "Rocket Raccoon" },
-    { hero_id: 1038, name: "Scarlet Witch" },
-    { hero_id: 1043, name: "Star Lord" },
-    { hero_id: 1015, name: "Storm" },
-    { hero_id: 1039, name: "Thor" },
-    { hero_id: 1035, name: "Venom" },
-    { hero_id: 1036, name: "Spider Man" },
-    { hero_id: 1049, name: "Wolverine" },
-    { hero_id: 1025, name: "Cloak & Dagger" },
-    { hero_id: 1052, name: "Iron Fist" },
-    { hero_id: 1021, name: "Hawkeye" },
-    { hero_id: 1030, name: "Moon Knight" },
-    { hero_id: 1048, name: "Psylocke" },
-    { hero_id: 1032, name: "Squirrel Girl" },
-    { hero_id: 1041, name: "Winter Soldier" },
-    { hero_id: 1033, name: "Black Widow" },
-    { hero_id: 1022, name: "Captain America" },
-    { hero_id: 1040, name: "Mister Fantastic" },
-    { hero_id: 1050, name: "Invisible Woman" },
-    { hero_id: 1017, name: "Human Torch" },
-    { hero_id: 1051, name: "The Thing" },
-];
 
 function getHeroNames(heroIds) {
     return heroIds.map(id => {
@@ -62,23 +24,17 @@ router.post('/getStats', async (req, res) => {
         for (const playerName of playerNames) {
 
             const findPlayerUrl = 'https://rivalsmeta.com/api/find-player';
-            const requestBody = JSON.stringify({ name: playerName });
-            console.log(`Requesting player ID for ${playerName} with body: ${requestBody}`);
+            const requestBody = { name: playerName };
+            console.log(`Requesting player ID for ${playerName} with body: ${JSON.stringify(requestBody)}`);
 
-            const findPlayerResponse = await fetch(findPlayerUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: requestBody
-            });
+            const findPlayerResponse = await axios.post(findPlayerUrl, requestBody);
 
-            if (!findPlayerResponse.ok) {
-                console.error(`Failed to find player ID for ${playerName}: ${findPlayerResponse.status} ${findPlayerResponse.statusText}`);
+            if (findPlayerResponse.status !== 200) {
+                console.error(`Failed to find player ID for ${playerName}: ${findPlayerResponse.status} ${findPlayerResponse.statusText}. Response: ${findPlayerResponse.data}`);
                 return res.status(findPlayerResponse.status).send(`Failed to find player ID for ${playerName}`);
             }
 
-            const findPlayerData = await findPlayerResponse.json();
+            const findPlayerData = findPlayerResponse.data;
             const playerId = findPlayerData[0].aid;
 
             if (!playerId) {
@@ -88,13 +44,13 @@ router.post('/getStats', async (req, res) => {
 
             const url = `https://rivalsmeta.com/api/player/${playerId}?season=3`;
 
-            const response = await fetch(url);
-            if (!response.ok) {
-                console.error(`Failed to fetch stats for ${playerId}: ${response.status} ${response.statusText}`);
+            const response = await axios.get(url);
+            if (response.status !== 200) {
+                console.error(`Failed to fetch stats for ${playerId}: ${response.status} ${response.statusText}. Response: ${response.data}`);
                 return res.status(response.status).send(`Failed to fetch stats for ${playerId}`);
             }
 
-            const data = await response.json();
+            const data = response.data;
 
             if (data && data.heroes_ranked) {
                 const heroesRanked = data.heroes_ranked;
