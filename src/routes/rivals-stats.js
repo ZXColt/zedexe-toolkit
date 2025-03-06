@@ -62,12 +62,15 @@ router.post('/getStats', async (req, res) => {
         for (const playerName of playerNames) {
 
             const findPlayerUrl = 'https://rivalsmeta.com/api/find-player';
+            const requestBody = JSON.stringify({ name: playerName });
+            console.log(`Requesting player ID for ${playerName} with body: ${requestBody}`);
+
             const findPlayerResponse = await fetch(findPlayerUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ name: playerName })
+                body: requestBody
             });
 
             if (!findPlayerResponse.ok) {
@@ -76,7 +79,6 @@ router.post('/getStats', async (req, res) => {
             }
 
             const findPlayerData = await findPlayerResponse.json();
-            console.log('findPlayerData:', findPlayerData);
             const playerId = findPlayerData[0].aid;
 
             if (!playerId) {
