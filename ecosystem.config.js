@@ -8,9 +8,11 @@ module.exports = {
             watch: false, // Watch for file changes and restart
             env: {
                 NODE_ENV: 'development',
+                USE_PROXY: 'false',
             },
             env_production: {
                 NODE_ENV: 'production',
+                USE_PROXY: 'true',
             },
         },
     ],
