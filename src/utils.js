@@ -2,7 +2,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs/promises');
 
-const downloadsDir = path.join(__dirname, 'downloads');
+const downloadsDir = path.join(path.dirname(require.main.filename), 'downloads');
 
 const createDownloadDirectory = async () => {
     const randomDirName = Math.random().toString(36).substring(2, 10);
@@ -81,7 +81,7 @@ const updateMetadata = async (filePath) => {
 };
 
 const updateDownloadData = async (req, fileSize) => {
-    const downloadDataFilePath = path.join(__dirname, 'download_data.json');
+    const downloadDataFilePath = path.join(path.dirname(require.main.filename), 'download_data.json');
     let downloadData = {};
     try {
         const data = await fs.readFile(downloadDataFilePath, 'utf8');

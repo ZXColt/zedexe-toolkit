@@ -1,12 +1,8 @@
 const express = require('express');
 const axios = require('axios');
 const heroes = require('../data/heroes.json'); // Import heroes from JSON file
-const HttpsProxyAgent = require('https-proxy-agent');
 
 const router = express.Router();
-
-const useProxy = process.env.USE_PROXY === 'true';
-const proxyAgent = useProxy ? new HttpsProxyAgent('socks5://localhost:1080') : null; // Configure the proxy agent if USE_PROXY is true
 
 function getHeroNames(heroIds) {
     return heroIds.map(id => {
@@ -31,8 +27,7 @@ router.post('/getStats', async (req, res) => {
             const requestBody = { name: playerName };
             console.log(`Requesting player ID for ${playerName} with body: ${JSON.stringify(requestBody)}`);
 
-            const axiosConfig = useProxy ? { httpsAgent: proxyAgent } : {};
-            const findPlayerResponse = await axios.post(findPlayerUrl, requestBody, axiosConfig);
+            const findPlayerResponse = await axios.post(findPlayerUrl, requestBody);
 
             if (findPlayerResponse.status !== 200) {
                 console.error(`Failed to find player ID for ${playerName}: ${findPlayerResponse.status} ${findPlayerResponse.statusText}. Response: ${findPlayerResponse.data}`);
@@ -49,7 +44,7 @@ router.post('/getStats', async (req, res) => {
 
             const url = `https://rivalsmeta.com/api/player/${playerId}?season=3`;
 
-            const response = await axios.get(url, axiosConfig);
+            const response = await axios.get(url);
             if (response.status !== 200) {
                 console.error(`Failed to fetch stats for ${playerId}: ${response.status} ${response.statusText}. Response: ${response.data}`);
                 return res.status(response.status).send(`Failed to fetch stats for ${playerId}`);
