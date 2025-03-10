@@ -1,9 +1,9 @@
-console.log('Script loaded');
-
 const isLocalhost = window.location.hostname === 'localhost';
 const baseURL = isLocalhost ? 'http://localhost:3000' : 'http://zedexe.com';
 
-function submitLink() {
+let downloadedVideoUrl = '';
+
+function downloadVideo() {
     const linkInput = document.getElementById('videoLink').value;
     const videoContainer = document.getElementById('videoContainer');
     const saveButton = document.getElementById('saveButton');
@@ -21,8 +21,8 @@ function submitLink() {
             return response.blob();
         })
         .then(videoBlob => {
-            const videoUrl = URL.createObjectURL(videoBlob);
-            videoContainer.innerHTML = `<video controls src="${videoUrl}" width="600"></video>`;
+            downloadedVideoUrl = URL.createObjectURL(videoBlob);
+            videoContainer.innerHTML = `<video controls src="${downloadedVideoUrl}" width="600"></video>`;
             saveButton.style.display = 'block'; // Show the save button
         })
         .catch(error => {
@@ -35,36 +35,23 @@ function submitLink() {
         });
 }
 
-function downloadVideo() {
-    const linkInput = document.getElementById('videoLink').value;
+function saveVideo() {
+    if (!downloadedVideoUrl) {
+        console.error('No video URL available for download');
+        return;
+    }
 
-    fetch(`${baseURL}/download?url=${encodeURIComponent(linkInput)}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.blob();
-        })
-        .then(videoBlob => {
-            const videoUrl = URL.createObjectURL(videoBlob);
-            const a = document.createElement('a');
-            a.href = videoUrl;
-            a.download = 'video.mp4';
-            document.body.appendChild(a);
+    const a = document.createElement('a');
+    a.href = downloadedVideoUrl;
+    a.download = 'video.mp4';
+    document.body.appendChild(a);
 
-            // For iPhone Safari
-            const event = new MouseEvent('click', {
-                view: window,
-                bubbles: true,
-                cancelable: true
-            });
-            a.dispatchEvent(event);
+    // Trigger the download
+    a.click();
 
-            document.body.removeChild(a);
-        })
-        .catch(error => {
-            console.error('There was a problem with the fetch operation:', error);
-        });
+    // Clean up
+    document.body.removeChild(a);
+    URL.revokeObjectURL(downloadedVideoUrl);
 }
 
 function pasteFromClipboard() {
@@ -77,8 +64,8 @@ function pasteFromClipboard() {
         });
 }
 
-document.getElementById('submitButton').addEventListener('click', submitLink);
-document.getElementById('saveButton').addEventListener('click', downloadVideo);
+document.getElementById('submitButton').addEventListener('click', downloadVideo);
+document.getElementById('saveButton').addEventListener('click', saveVideo);
 document.getElementById('pasteButton').addEventListener('click', pasteFromClipboard);
 
 // Initially hide the save button
