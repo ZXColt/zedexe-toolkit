@@ -21,6 +21,10 @@ app.get('/downloader', (req, res) => {
 	res.sendFile(path.join(__dirname, 'public/downloader', 'index.html'));
 });
 
+app.get('/terminal', (req, res) => {
+	res.sendFile(path.join(__dirname, 'public/terminal', 'index.html'));
+});
+
 // Use the routes
 const downloadRoute = require('./routes/download');
 const getStatsRoute = require('./routes/rivals-stats');
