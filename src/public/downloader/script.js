@@ -1,6 +1,3 @@
-const isLocalhost = window.location.hostname === 'localhost';
-const baseURL = isLocalhost ? 'http://localhost:3000' : 'http://zedexe.com';
-
 let downloadedVideoUrl = '';
 
 function downloadVideo() {
@@ -9,11 +6,16 @@ function downloadVideo() {
     const saveButton = document.getElementById('saveButton');
     const spinner = document.getElementById('spinner');
 
+    // Clear previously downloaded data
+    URL.revokeObjectURL(downloadedVideoUrl);
+    downloadedVideoUrl = '';
+    videoContainer.innerHTML = '';
+    saveButton.style.display = 'none';
+
     // Show the spinner
     spinner.style.display = 'block';
-    videoContainer.innerHTML = '';
 
-    fetch(`${baseURL}/download?url=${encodeURIComponent(linkInput)}`)
+    fetch(`/download?url=${encodeURIComponent(linkInput)}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
