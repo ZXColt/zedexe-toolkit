@@ -35,7 +35,7 @@ router.get('/download', async (req, res) => {
         res.setHeader('Content-Type', mimeType);
         res.send(fileBuffer);
 
-        await updateDownloadData(req, fileBuffer.length);
+        await updateDownloadData(url, fileBuffer.length);
         console.log('Cleaning up download:', downloadPath);
         await fs.rm(downloadPath, { recursive: true, force: true });
     } catch (error) {

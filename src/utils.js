@@ -54,7 +54,7 @@ const updateMetadata = async (filePath) => {
     console.log('Updating metadata for video:', filePath);
     const currentTime = new Date();
     const tempFilePath = `${filePath}.temp.mp4`;
-    const ffmpegCommand = `ffmpeg -i "${filePath}" -metadata creation_time="${currentTime.toISOString()}" -codec copy "${tempFilePath}" && mv "${tempFilePath}" "${filePath}"`;
+    const ffmpegCommand = `ffmpeg -i "${filePath}" -map_metadata -1 -metadata creation_time="${currentTime.toISOString()}" -codec copy "${tempFilePath}" && mv "${tempFilePath}" "${filePath}"`;
     const ffmpegProcess = spawn('/usr/bin/env', ['bash', '-c', ffmpegCommand]);
 
     let ffmpegStderrOutput = '';
@@ -80,8 +80,8 @@ const updateMetadata = async (filePath) => {
     });
 };
 
-const updateDownloadData = async (req, fileSize) => {
-    const downloadDataFilePath = path.join(__dirname, 'download_data.json');
+const updateDownloadData = async (url, fileSize) => {
+    const downloadDataFilePath = path.join(__dirname, 'downloads', 'download_data.json');
     let downloadData = {};
     try {
         const data = await fs.readFile(downloadDataFilePath, 'utf8');
@@ -95,26 +95,17 @@ const updateDownloadData = async (req, fileSize) => {
         }
     }
 
-    const ip = req.ip.startsWith('::ffff:') ? req.ip.substring(7) : req.ip;
-    if (!downloadData[ip]) {
-        downloadData[ip] = { downloads: 0, totalDataMB: 0 };
-    }
-    if (!downloadData[ip].location) {
-        try {
-            const response = await fetch(`https://ipwhois.app/json/8.8.8.8`);
-            const locationData = await response.json();
-            const location = `${locationData.city}, ${locationData.region}, ${locationData.country}`;
-            downloadData[ip].location = location;
-        } catch (locationError) {
-            console.error('Error getting location:', locationError);
-        }
-    }
-    downloadData[ip].downloads += 1;
-    downloadData[ip].totalDataMB += fileSize / (1024 * 1024);
+    const baseUrl = new URL(url).origin;
 
-    const centralTime = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' });
-    const logEntry = `${centralTime} -- IP:${ip} -- Size:${fileSize / (1024 * 1024)}MB -- Location: ${downloadData[ip].location}\n`;
-    console.log(logEntry);
+    if (!downloadData[baseUrl]) {
+        downloadData[baseUrl] = {
+            totalSize: 0,
+            downloadCount: 0,
+        };
+    }
+
+    downloadData[baseUrl].totalSize += fileSize / (1024 * 1024); // Convert bytes to megabytes
+    downloadData[baseUrl].downloadCount += 1;
 
     await fs.writeFile(downloadDataFilePath, JSON.stringify(downloadData, null, 2));
 };

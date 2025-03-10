@@ -24,4 +24,21 @@ router.get('/terminal/getMarketData', async (req, res) => {
     }
 });
 
+router.get('/terminal/getStockData', async (req, res) => {
+    try {
+        // Use the Axios instance with common headers
+
+        //https://api.nasdaq.com/api/quote/AMD/info?assetclass=stocks
+        //https://api.nasdaq.com/api/quote/SPY/info?assetclass=etf
+        //https://api.nasdaq.com/api/quote/SPX/info?assetclass=index
+
+        const stockData = await axiosInstance.get('https://api.nasdaq.com/api/quote/AMD/info?assetclass=stocks');
+        console.log(stockData);
+        res.json(stockData.data);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch stock data' });
+    }
+});
+
 module.exports = router;
