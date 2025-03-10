@@ -51,7 +51,15 @@ function downloadVideo() {
             a.href = videoUrl;
             a.download = 'video.mp4';
             document.body.appendChild(a);
-            a.click();
+
+            // For iPhone Safari
+            const event = new MouseEvent('click', {
+                view: window,
+                bubbles: true,
+                cancelable: true
+            });
+            a.dispatchEvent(event);
+
             document.body.removeChild(a);
         })
         .catch(error => {

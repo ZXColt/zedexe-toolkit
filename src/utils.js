@@ -14,10 +14,10 @@ const createDownloadDirectory = async () => {
 const downloadVideo = async (url, downloadPath) => {
     console.log('Downloading video:', url);
     const randomFileName = 'zedex-rip';
-    const ytDlpCommand = `yt-dlp -f 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best' -o '${path.join(
+    const ytDlpCommand = `yt-dlp -f 'best[ext=mp4]' -o '${path.join(
         downloadPath,
-        `${randomFileName}.mp4`
-    )}' --no-mtime "${url}"`;
+        `${randomFileName}.%(ext)s`
+    )}' "${url}"`;
 
     const ytDlpProcess = spawn('/usr/bin/env', ['bash', '-c', ytDlpCommand], {
         stdout: 'pipe',

@@ -3,7 +3,6 @@ const axios = require('axios');
 
 const router = express.Router();
 
-// Create an Axios instance with common headers
 const axiosInstance = axios.create({
     headers: {
         'Content-Type': 'application/json',
@@ -14,7 +13,6 @@ const axiosInstance = axios.create({
 
 router.get('/terminal/getMarketData', async (req, res) => {
     try {
-        // Use the Axios instance with common headers
         const marketData = await axiosInstance.get('https://api.nasdaq.com/api/market-info');
         console.log(marketData);
         res.json(marketData.data);
