@@ -1,14 +1,14 @@
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
-const { createDownloadDirectory, downloadVideo, updateMetadata, updateDownloadData } = require('./utils');
+//const { createDownloadDirectory, downloadVideo, updateMetadata, updateDownloadData } = require('./utils');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const downloadsDir = path.join(__dirname, 'downloads');
-const downloadDataFilePath = path.join(__dirname, 'download_data.json');
+//const downloadsDir = path.join(__dirname, 'downloads');
+//const downloadDataFilePath = path.join(__dirname, 'download_data.json');
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -28,9 +28,11 @@ app.get('/terminal', (req, res) => {
 // Use the routes
 const downloadRoute = require('./routes/download');
 const getStatsRoute = require('./routes/rivals-stats');
+const terminalRoute = require('./routes/terminal');
 
 app.use(downloadRoute);
 app.use(getStatsRoute);
+app.use(terminalRoute);
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
