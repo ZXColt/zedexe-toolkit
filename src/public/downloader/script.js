@@ -24,7 +24,7 @@ function downloadVideo() {
         })
         .then(videoBlob => {
             downloadedVideoUrl = URL.createObjectURL(videoBlob);
-            videoContainer.innerHTML = `<video controls src="${downloadedVideoUrl}" width="600"></video>`;
+            videoContainer.innerHTML = `<video controls src="${downloadedVideoUrl}"></video>`;
             saveButton.style.display = 'block'; // Show the save button
         })
         .catch(error => {

@@ -12,12 +12,23 @@ const createDownloadDirectory = async () => {
 };
 
 const downloadVideo = async (url, downloadPath) => {
-    console.log('Downloading video:', url);
+
+    const trimmedUrl = url.split('?')[0];
+    console.log('Downloading video:', trimmedUrl);
+    const baseUrl = new URL(trimmedUrl).origin;
+    let optionalArgs = '';
+    if (baseUrl.includes('x.com')) {
+        optionalArgs = '--extractor-arg "twitter:api=legacy"';
+    }
+    if (baseUrl.includes('instagram.com')) {
+        optionalArgs = '';
+    }
+
     const randomFileName = 'zedex-rip';
-    const ytDlpCommand = `yt-dlp -f 'best[ext=mp4]' -o '${path.join(
+    const ytDlpCommand = `yt-dlp ${optionalArgs} -f 'best[ext=mp4]' -o '${path.join(
         downloadPath,
         `${randomFileName}.%(ext)s`
-    )}' "${url}"`;
+    )}' "${trimmedUrl}"`;
 
     const ytDlpProcess = spawn('/usr/bin/env', ['bash', '-c', ytDlpCommand], {
         stdout: 'pipe',
