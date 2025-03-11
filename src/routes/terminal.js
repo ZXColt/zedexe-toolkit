@@ -1,7 +1,10 @@
 const express = require('express');
 const axios = require('axios');
+//const db = require('../database');
 
 const router = express.Router();
+
+let marketData = {};
 
 const axiosInstance = axios.create({
     headers: {
@@ -13,24 +16,29 @@ const axiosInstance = axios.create({
 
 router.get('/terminal/getMarketData', async (req, res) => {
     try {
-        const marketData = await axiosInstance.get('https://api.nasdaq.com/api/market-info');
-        console.log(marketData);
-        res.json(marketData.data);
+        const response = await axiosInstance.get('https://api.nasdaq.com/api/market-info');
+        const data = response.data.data;
+        // Extract the required fields
+        const { mrktStatus, mrktCountDown, nextTradeDate } = data;
+        marketData = { mrktStatus, mrktCountDown, nextTradeDate };
+
+        // Send the extracted fields in the response
+        res.json(marketData);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to fetch market data' });
     }
 });
 
-router.get('/terminal/getStockData', async (req, res) => {
+router.get('/terminal/getTickerData', async (req, res) => {
+    const ticker = req.query.ticker;
+
+    //https://api.nasdaq.com/api/quote/AMD/info?assetclass=stocks
+    //https://api.nasdaq.com/api/quote/SPY/info?assetclass=etf
+    //https://api.nasdaq.com/api/quote/SPX/info?assetclass=index
+
     try {
-        // Use the Axios instance with common headers
-
-        //https://api.nasdaq.com/api/quote/AMD/info?assetclass=stocks
-        //https://api.nasdaq.com/api/quote/SPY/info?assetclass=etf
-        //https://api.nasdaq.com/api/quote/SPX/info?assetclass=index
-
-        const stockData = await axiosInstance.get('https://api.nasdaq.com/api/quote/AMD/info?assetclass=stocks');
+        const stockData = await axiosInstance.get(`https://api.nasdaq.com/api/quote/${ticker}/info?assetclass=stocks`);
         console.log(stockData);
         res.json(stockData.data);
     } catch (error) {
