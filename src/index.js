@@ -25,14 +25,20 @@ app.get('/terminal', (req, res) => {
 	res.sendFile(path.join(__dirname, 'public/terminal', 'index.html'));
 });
 
+app.get('/stream', (req, res) => {
+	res.sendFile(path.join(__dirname, 'public/stream', 'index.html'));
+});
+
 // Use the routes
 const downloadRoute = require('./routes/download');
 const getStatsRoute = require('./routes/rivals-stats');
 const terminalRoute = require('./routes/terminal');
+//const streamRoute = require('./routes/stream');
 
 app.use(downloadRoute);
 app.use(getStatsRoute);
 app.use(terminalRoute);
+//app.use(streamRoute);
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {

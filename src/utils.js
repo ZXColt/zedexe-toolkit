@@ -21,7 +21,7 @@ const downloadVideo = async (url, downloadPath) => {
         optionalArgs = '--extractor-arg "twitter:api=legacy"';
     }
     if (baseUrl.includes('instagram.com')) {
-        optionalArgs = '';
+        optionalArgs = '--cookies cookies.txt';
     }
 
     const randomFileName = 'zedex-rip';

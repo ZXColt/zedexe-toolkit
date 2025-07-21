@@ -30,21 +30,15 @@ router.get('/terminal/getMarketData', async (req, res) => {
     }
 });
 
-router.get('/terminal/getTickerData', async (req, res) => {
-    const ticker = req.query.ticker;
+// router.get('/terminal/getTickerData', async (req, res) => {
+//     const ticker = req.query.ticker;
+//     let data = await finvizor.stock(ticker);
+//     console.log("finvizor data: ", data);
 
-    //https://api.nasdaq.com/api/quote/AMD/info?assetclass=stocks
-    //https://api.nasdaq.com/api/quote/SPY/info?assetclass=etf
-    //https://api.nasdaq.com/api/quote/SPX/info?assetclass=index
-
-    try {
-        const stockData = await axiosInstance.get(`https://api.nasdaq.com/api/quote/${ticker}/info?assetclass=stocks`);
-        console.log(stockData);
-        res.json(stockData.data);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to fetch stock data' });
-    }
-});
+//     https://api.nasdaq.com/api/quote/AMD/info?assetclass=stocks
+//     https://api.nasdaq.com/api/quote/SPY/info?assetclass=etf
+//     https://api.nasdaq.com/api/quote/SPX/info?assetclass=index
+//     res.json(data);
+// });
 
 module.exports = router;
